@@ -13,8 +13,9 @@ void Entity_manager::add_component (Component_type component_type, C_base::Ptr c
 	m_components[static_cast<size_t>(component_type)] = std::move(component);
 }
 
-Entity_manager::Entity_manager()
+Entity_manager::Entity_manager(messaging::Messenger* messenger) : messaging::Sender{ messenger }
 {
+	add_message("entity_modified");
 }
 
 std::optional<size_t> Entity_manager::get_index(Component_type component, Entity_id entity) const
@@ -36,7 +37,19 @@ bool Entity_manager::has_component(Entity_id entity, Component_type component) c
 	return m_entity_index[entity][static_cast<size_t>(component)].has_value();
 }
 
-bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type component)
+void Entity_manager::do_notify(Entity_id entity) const
+{
+	Bitmask b;
+	int i{ 0 };
+	for (auto index : m_entity_index[entity])
+	{
+		if (index) b.set(i);
+		++i;
+	}
+	notify("entity_modified", Modified_payload{ entity, b });
+}
+
+bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type component, bool will_notify)
 {
 	size_t comp_index = static_cast<size_t>(component);
 	if (m_entity_index[entity][comp_index])  // already have it
@@ -53,16 +66,21 @@ bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type co
 		return true;
 	}
 	m_entity_index[entity][comp_index] = free_index;
+	if (will_notify)
+	{
+		do_notify(entity);
+	}
 	return true;
 }
 
-bool Entity_manager::remove_component_from_entity(Entity_id entity, Component_type component)
+bool Entity_manager::remove_component_from_entity(Entity_id entity, Component_type component, bool will_notify)
 {
 	size_t comp_index = static_cast<size_t>(component);
 	auto index = m_entity_index[entity][comp_index];
 	if (!index) return false;  // don't have it
 	m_components[comp_index]->m_free_indices.push_back(index.value());
 	m_entity_index[entity][comp_index] = std::nullopt;
+	if (will_notify) do_notify(entity);
 	return true;
 }
 
@@ -85,10 +103,11 @@ Entity_id Entity_manager::add_entity(Bitmask b)
 	{
 		if (b[i])
 		{
-			add_component_to_entity(new_id, static_cast<Component_type>(i));
+			add_component_to_entity(new_id, static_cast<Component_type>(i), false);
 		}
 	}
-	m_entity_modified.notify(Modified_payload{ new_id, b });
+	notify("entity_modified", Modified_payload{ new_id, b });
+//	m_entity_modified.notify(Modified_payload{ new_id, b });
 	return new_id;
 }
 
@@ -99,14 +118,15 @@ void Entity_manager::update_entity(Entity_id id, Bitmask b)
 		auto comp = static_cast<Component_type>(i);
 		if (!b[i] && has_component(id, comp))
 		{
-			remove_component_from_entity(id, comp);
+			remove_component_from_entity(id, comp, false);
 		}
 		if (b[i] && !has_component(id, comp))
 		{
-			add_component_to_entity(id, comp);
+			add_component_to_entity(id, comp, false);
 		}
 	}
-	m_entity_modified.notify(Modified_payload{ id, b });
+	notify("entity_modified", Modified_payload{ id, b });
+//	m_entity_modified.notify(Modified_payload{ id, b });
 }
 
 void Entity_manager::remove_entity(Entity_id id)
@@ -117,11 +137,12 @@ void Entity_manager::remove_entity(Entity_id id)
 		{
 			if (index)
 			{
-				remove_component_from_entity(id, static_cast<Component_type>(i));
+				remove_component_from_entity(id, static_cast<Component_type>(i), false);
 				index = std::nullopt;
 			}
 			++i;
 		});
-	m_entity_modified.notify(Modified_payload{ id, Bitmask{} });
+	notify("entity_modified", Modified_payload{ id, Bitmask{} });
+//	m_entity_modified.notify(Modified_payload{ id, Bitmask{} });
 }
 

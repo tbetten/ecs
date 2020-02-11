@@ -1,15 +1,19 @@
 #include "component.h"
 #include "system_manager.h"
+#include "messaging.h"
 
 #include <algorithm>
 #include <iostream>
+#include <type_traits>
 #include <SFML/System.hpp>
 
 using namespace ecs;
 
 void System_manager::setup_events ()
 {
-	m_entity_mgr->get_event ().bind ([this](auto p) {entity_modified (p); });
+//	m_entity_mgr->get_event ().bind ([this](auto p) {entity_modified (p); });
+	std::cout << "in sys mgr setup events\n";
+	m_messenger->bind("entity_modified", [this](auto p) {entity_modified(p); });
 	for (auto& system : m_systems)
 	{
 		system.second->setup_events ();
@@ -50,28 +54,6 @@ void System_manager::update (sf::Int64 dt)
 	}
 }
 
-void System_manager::register_events (System_type system, const std::vector<std::string>& events)
-{
-	for (auto& event : events)
-	{
-		auto itr = m_events.find (event);
-		if (itr == m_events.end ())
-		{
-			m_events[event] = system;
-		}
-	}
-}
-
-System_type System_manager::find_event (const std::string& event) const
-{
-	return m_events.at (event);
-}
-
-Dispatcher& System_manager::get_event (System_type system, const std::string& event) const
-{
-	return m_systems.at(system)->get_event (event);
-}
-
 void System_manager::entity_modified (std::any val)
 {
 	Modified_payload p;
@@ -84,6 +66,8 @@ void System_manager::entity_modified (std::any val)
 		std::cout << e.what () << std::endl;
 		return;
 	}
+	auto x = p.m_bits;
+	std::cout << "entity modified: sys mgr; entity = " + std::to_string(p.m_entity) + "\t" + p.m_bits.to_string() +  "\n";
 	for (auto& sys : m_systems)
 	{
 		auto& system = sys.second;

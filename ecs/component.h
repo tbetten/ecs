@@ -46,22 +46,23 @@ namespace ecs
 		std::vector<T> m_data;
 	};
 
-	class Entity_manager
+	class Entity_manager : public messaging::Sender
 	{
 	public:
 		using Component_index = std::optional<size_t>;          // index into m_components
 		using Component_indices = std::vector<Component_index>; // all component indices of an entity
 		using Entity_index = std::vector<Component_indices>;    // component indices of all entities; entity id is index into this vector
 
-		Entity_manager();
+		explicit Entity_manager(messaging::Messenger* messenger);
 		void add_component (Component_type component_type, C_base::Ptr component);
 		Entity_id add_entity (Bitmask b);
 		void update_entity (Entity_id id, Bitmask b);
 		bool has_component (Entity_id entity, Component_type component) const;
-		bool add_component_to_entity(Entity_id entity, Component_type component);
-		bool remove_component_from_entity(Entity_id entity, Component_type component);
+		bool add_component_to_entity(Entity_id entity, Component_type component, bool will_notify = true);
+		bool remove_component_from_entity(Entity_id entity, Component_type component, bool will_notify = true);
 		void remove_entity (Entity_id id);
-		Dispatcher& get_event () { return m_entity_modified; }
+		messaging::Messenger* get_messenger() { return m_messenger; }
+	//	Dispatcher& get_event () { return m_entity_modified; }
 
 		template <typename T>
 		T* get_component (Component_type c_id)
@@ -83,8 +84,9 @@ namespace ecs
 
 	private:
 		std::optional<size_t> take_free_index(size_t component_index);
+		void do_notify(Entity_id entity) const;
 
-		Dispatcher m_entity_modified;
+	//	Dispatcher m_entity_modified;
 		std::vector<C_base::Ptr> m_components;
 		Entity_index m_entity_index;
 	};

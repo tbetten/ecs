@@ -7,6 +7,7 @@ namespace ecs
 {
 	using Entity_id = unsigned int;
 	using Bitmask = std::bitset<max_components>;
+	enum class System_type : size_t;
 }
 	struct Modified_payload
 	{

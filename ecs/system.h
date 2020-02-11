@@ -9,7 +9,7 @@ namespace ecs
 {
 	using Entity_list = std::vector<Entity_id>;
 	using Requirements = std::vector<Bitmask>;
-	enum class System_type : size_t;
+//	enum class System_type : size_t;
 
 	class System_manager;
 	class S_base
@@ -22,13 +22,14 @@ namespace ecs
 		bool add_entity (Entity_id entity);
 		bool has_entity (Entity_id entity) const;
 		bool remove_entity (Entity_id entity);
+		virtual void order_entities() {};
 
 		System_type get_id () { return m_id; }
 		bool fits_requirements (Bitmask bits) const;
 
 		virtual void update (sf::Int64 dt) = 0;
 		virtual void setup_events () = 0;
-		virtual Dispatcher& get_event (const std::string& event) = 0;
+//		virtual Dispatcher& get_event (const std::string& event) = 0;
 
 	protected:
 		System_type m_id;

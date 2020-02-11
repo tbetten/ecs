@@ -3,6 +3,7 @@
 #include "system.h"
 
 #include <algorithm>
+#include <iostream>
 
 using namespace ecs;
 
@@ -20,6 +21,7 @@ bool S_base::add_entity (Entity_id entity)
 
 bool S_base::remove_entity (Entity_id entity)
 {
+	std::cout << "system " << static_cast<int>(m_id) << " remove entity " << entity << "\n";
 	if (!has_entity (entity)) return false;
 	auto itr = std::find (m_entities.begin (), m_entities.end (), entity);
 	m_entities.erase (itr);

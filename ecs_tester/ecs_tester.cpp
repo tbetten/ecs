@@ -31,7 +31,8 @@ struct C
 
 int main()
 {
-	ecs::Entity_manager em{};
+	messaging::Messenger m;
+	ecs::Entity_manager em{&m};
 	em.add_component(ecs::Component_type::C, std::unique_ptr<ecs::C_base>(new ecs::Component<C>()));
 	em.add_component(ecs::Component_type::A, std::unique_ptr<ecs::C_base>(new ecs::Component<A>()));
 	em.add_component(ecs::Component_type::B, std::unique_ptr<ecs::C_base>(new ecs::Component<B>()));
