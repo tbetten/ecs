@@ -16,6 +16,7 @@ bool S_base::add_entity (Entity_id entity)
 {
 	if (has_entity (entity)) return false;
 	m_entities.emplace_back (entity);
+	order_entities();
 	return true;
 }
 
