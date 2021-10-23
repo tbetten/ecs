@@ -27,10 +27,10 @@ namespace messaging
 
 	Binding_id Messenger::bind(std::string message, Callback c) noexcept
 	{
-		if (message == "entity_modified")
+/*		if (message == "entity_modified")
 		{
 			std::cout << "bound entity modified\n";
-		}
+		}*/
 		auto itr = m_bindings.find(message);
 		if (itr == std::cend(m_bindings))
 		{

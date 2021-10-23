@@ -16,6 +16,8 @@ namespace messaging
 	{
 	public:
 		explicit Sender(Messenger* messenger) : m_messenger{ messenger } {}
+		Sender () : m_messenger { nullptr } {}
+		inline void set_messenger (Messenger* m) { m_messenger = m; }
 		void add_message(std::string message) noexcept;
 		void remove_message(std::string_view message) noexcept;
 		bool notify(std::string_view message, std::any payload) const noexcept;

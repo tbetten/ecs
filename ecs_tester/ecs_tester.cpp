@@ -14,18 +14,21 @@ namespace ecs
 struct A
 {
 	void reset() { i = 0; }
+	void load (const std::string& key, Shared_context* context) {}
 	int i;
 };
 
 struct B
 {
 	void reset() { f = 3.14f; }
+	void load (const std::string& key, Shared_context* context) {}
 	float f;
 };
 
 struct C
 {
 	void reset() { s = "hello world"; }
+	void load (const std::string& key, Shared_context* context) {}
 	std::string s;
 };
 
@@ -38,12 +41,15 @@ int main()
 	em.add_component(ecs::Component_type::B, std::unique_ptr<ecs::C_base>(new ecs::Component<B>()));
 	ecs::Bitmask b1{ 3 };
 	auto e1 = em.add_entity(b1);
+	em.add_component_to_entity (e1, ecs::Component_type::C, "key");
 	ecs::Bitmask b2{ 1 };
 	auto e2 = em.add_entity(b2);
 	em.add_component_to_entity(e2, ecs::Component_type::C);
 	em.remove_component_from_entity(e1, ecs::Component_type::A);
 	ecs::Bitmask b3{ 7 };
-	auto e3 = em.add_entity(b3);
+	auto e3 = em.add_entity(b3, "key");
+	em.add_component_to_entity (e2, ecs::Component_type::C, "key");
+	em.remove_component_from_entity (e1, ecs::Component_type::C);
 	em.remove_entity(e1);
 	auto e4 = em.add_entity(b3);
 }

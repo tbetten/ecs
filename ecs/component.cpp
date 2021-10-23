@@ -1,6 +1,8 @@
 #include "component.h"
 
 #include <algorithm>
+#include <numeric>
+#include <string>
 
 using namespace ecs;
 
@@ -32,6 +34,19 @@ std::optional<size_t> Entity_manager::take_free_index(size_t component_index)
 	return index;
 }
 
+std::optional<Entity_id> Entity_manager::idex_to_entity(Component_type c_id, std::size_t index) const
+{
+	auto itr = std::find_if(std::cbegin(m_entity_index), std::cend(m_entity_index), [c_id, index](Component_indices row) {return *(row.at(static_cast<std::size_t>(c_id))) == index; });
+	if (itr == std::cend(m_entity_index))
+	{
+		return std::nullopt;
+	}
+	else
+	{
+		return std::distance(std::cbegin(m_entity_index), itr);
+	}
+}
+
 bool Entity_manager::has_component(Entity_id entity, Component_type component) const
 {
 	return m_entity_index[entity][static_cast<size_t>(component)].has_value();
@@ -49,15 +64,49 @@ void Entity_manager::do_notify(Entity_id entity) const
 	notify("entity_modified", Modified_payload{ entity, b });
 }
 
-bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type component, bool will_notify)
+C_base* Entity_manager::get_component_by_id (size_t id) const
+{
+	return m_components [id].get ();
+}
+
+bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type component, std::string key, bool will_notify)
 {
 	size_t comp_index = static_cast<size_t>(component);
+	bool loaded { true };
 	if (m_entity_index[entity][comp_index])  // already have it
 	{
-		return false;
+		return loaded;
 	}
 
-	auto free_index = take_free_index(comp_index);
+	auto& comp = m_components [comp_index];
+	auto& shares = comp->m_shares;
+	std::optional<size_t> new_index { std::nullopt };
+	if (key != "")
+	{
+		auto share_itr = std::find_if (std::cbegin(shares), std::cend(shares), [&key] (const Share& s){return s.key == key; });
+		if (share_itr != std::cend (shares))
+		{
+			new_index = share_itr->component_index;
+		}
+	}
+	if (!new_index) new_index = take_free_index (comp_index);
+	if (!new_index)
+	{
+		new_index = m_components [comp_index]->get_size ();
+		m_components [comp_index]->add_row ();
+		loaded = false;
+	}
+	if (!new_index)
+	{
+		throw "panic!!!";
+	}
+	m_entity_index [entity][comp_index] = new_index;
+	if (key != "") shares.emplace_back (key, entity, new_index.value());
+	if (will_notify) do_notify (entity);
+	return loaded;
+
+
+/*	auto free_index = take_free_index(comp_index);
 	if (!free_index)
 	{
 		auto size = m_components[comp_index]->get_size();
@@ -70,7 +119,7 @@ bool Entity_manager::add_component_to_entity(Entity_id entity, Component_type co
 	{
 		do_notify(entity);
 	}
-	return true;
+	return true;*/
 }
 
 bool Entity_manager::remove_component_from_entity(Entity_id entity, Component_type component, bool will_notify)
@@ -78,13 +127,30 @@ bool Entity_manager::remove_component_from_entity(Entity_id entity, Component_ty
 	size_t comp_index = static_cast<size_t>(component);
 	auto index = m_entity_index[entity][comp_index];
 	if (!index) return false;  // don't have it
+	
+	auto& comp = m_components [comp_index];
+	auto& shares = comp->m_shares;
+	auto s = std::find_if (std::begin (shares), std::end (shares), [entity] (const Share& s){return s.entity == entity; });
+	if (s != std::end (shares))
+	{
+		auto key = s->key;
+		shares.erase (s);
+		auto s2 = std::find_if (std::cbegin (shares), std::cend (shares), [&key] (const Share& s){return s.key == key; });
+		if (s2 == std::cend (shares))
+		{
+			m_components [comp_index]->m_free_indices.push_back (index.value ());
+		}
+		m_entity_index [entity][comp_index] = std::nullopt;
+		return true;
+	}
+
 	m_components[comp_index]->m_free_indices.push_back(index.value());
 	m_entity_index[entity][comp_index] = std::nullopt;
 	if (will_notify) do_notify(entity);
 	return true;
 }
 
-Entity_id Entity_manager::add_entity(Bitmask b)
+Entity_id Entity_manager::add_entity(Bitmask b, std::string key)
 {
 	Entity_id new_id{};
 	auto first_free_itr = std::find_if(m_entity_index.cbegin(), m_entity_index.cend(), [](Component_indices row)
@@ -103,7 +169,7 @@ Entity_id Entity_manager::add_entity(Bitmask b)
 	{
 		if (b[i])
 		{
-			add_component_to_entity(new_id, static_cast<Component_type>(i), false);
+			add_component_to_entity(new_id, static_cast<Component_type>(i), key, false);
 		}
 	}
 	notify("entity_modified", Modified_payload{ new_id, b });
@@ -111,7 +177,7 @@ Entity_id Entity_manager::add_entity(Bitmask b)
 	return new_id;
 }
 
-void Entity_manager::update_entity(Entity_id id, Bitmask b)
+/*void Entity_manager::update_entity(Entity_id id, Bitmask b)
 {
 	for (size_t i = 0; i < b.size(); ++i)
 	{
@@ -127,7 +193,7 @@ void Entity_manager::update_entity(Entity_id id, Bitmask b)
 	}
 	notify("entity_modified", Modified_payload{ id, b });
 //	m_entity_modified.notify(Modified_payload{ id, b });
-}
+}*/
 
 void Entity_manager::remove_entity(Entity_id id)
 {

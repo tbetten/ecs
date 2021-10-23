@@ -12,7 +12,6 @@ using namespace ecs;
 void System_manager::setup_events ()
 {
 //	m_entity_mgr->get_event ().bind ([this](auto p) {entity_modified (p); });
-	std::cout << "in sys mgr setup events\n";
 	m_messenger->bind("entity_modified", [this](auto p) {entity_modified(p); });
 	for (auto& system : m_systems)
 	{
